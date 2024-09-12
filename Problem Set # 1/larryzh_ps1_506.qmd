@@ -1,0 +1,322 @@
+---
+title: "larryzh_ps1_506"
+author: "larryzh"
+format: html
+---
+
+[My GitHub](https://github.com/larryzhou826/stats506-coursework)
+
+## STATS 506: Computational Methods and Tools in Statistics
+
+### Fall 2024
+
+### Problem Set 1
+
+#### Problem 1 - Wine Data
+
+#### 1.a
+
+```{r 1.a}
+# import the data
+wine <- read.csv("wine.data", sep=",", header=FALSE)
+wine <- data.frame(wine)
+col_names <- c("Class", "Alcohol", "Malic_acid", "Ash", "Alcalinity_of_ash", "Magnesium", "Total_phenols", "Flavanoids", "Nonflavanoid_phenols", "Proanthocyanins", "Color_intensity", "Hue", "OD280/OD315_of_diluted_wines", "Proline")
+colnames(wine) <- col_names
+
+```
+
+#### 1.b
+
+```{r 1.b}
+count_by_class <- table(wine$Class)
+print(count_by_class)
+```
+
+Based on the output below, we've verified that the number of wines within each class is correct as reported in "wine.names".
+
+#### 1.c
+
+#### 1.c.1
+
+```{r 1.c.1}
+# correlation between alcohol content and color intensity
+correlation_value <- cor(wine$Alcohol, wine$Color_intensity)
+
+# Print the message with the correlation value
+print(paste('The correlation between alcohol content and color intensity is', correlation_value))
+```
+
+#### 1.c.2
+
+```{r 1.c.2}
+# find the classes with highest or lowest correlations
+split_by_class <- split(wine, wine$Class)
+
+calculate_correlation <- function(data) {
+  cor(data$Alcohol, data$Color_intensity)
+}
+
+correlations_by_class <- lapply(split_by_class, calculate_correlation)
+
+print(correlations_by_class)
+```
+
+We see that the first class has the highest correlation and the second class has the lowest correlation.
+
+#### 1.c.3
+
+```{r 1.c.3}
+# Identify the alcohol content of the wine with the highest color intensity
+index_highest_ci <- which.max(wine$Color_intensity)
+alcohol_content <- wine$Alcohol[index_highest_ci]
+print(alcohol_content)
+```
+
+The alcohol content of the wine with the highest color intensity is 14.34.
+
+#### 1.c.4
+
+```{r 1.c.4}
+higher_proantho <- sum(wine$Proanthocyanins > wine$Ash)
+
+n_rows = nrow(wine)
+
+percent_higher <- higher_proantho / n_rows
+
+print(round(percent_higher * 100,2))
+```
+
+8.43% of wines had a higher content of proanthocyanins compare to ash.
+
+#### 1.d
+
+```{r 1.d}
+overall_avgs <- colMeans(wine[,-1])
+
+avgs_by_class <- aggregate(wine[, -1], by = list(Class = wine$Class), FUN = mean)
+
+overall_avg_df <- data.frame(t(overall_avgs))
+overall_avg_df$Class <- "Overall"
+overall_avg_df <- overall_avg_df[, c(ncol(overall_avg_df),1:(ncol(overall_avg_df)-1))]
+
+colnames(overall_avg_df) <- colnames(avgs_by_class)
+avg_table <- rbind(overall_avg_df, avgs_by_class)
+colnames(avg_table)[1] <- "Class"
+avg_table
+
+```
+
+#### 1.e
+
+```{r 1.e}
+# carry out a series of t-tests to examine whether the level of phenols differ across the three classes
+
+t_test_12 <- t.test(wine$Total_phenols[wine$Class == 1], 
+                    wine$Total_phenols[wine$Class == 2])
+
+t_test_13 <- t.test(wine$Total_phenols[wine$Class == 1], 
+                    wine$Total_phenols[wine$Class == 3])
+
+t_test_23 <- t.test(wine$Total_phenols[wine$Class == 2], 
+                    wine$Total_phenols[wine$Class == 3])
+
+t_test_12
+t_test_13
+t_test_23
+```
+
+We see that the p-values for these three tests are all sufficiently small, indicating that the level of phenols does differ across the three classes.
+
+Below is a manually written function which aims to calculate t-test p-values for two samples.
+
+```{r 1.e2}
+# calculate t-test p-values manually
+
+manual_t_test <- function(x, y) {
+
+  mean_x <- mean(x)
+  mean_y <- mean(y)
+  
+  var_x <- var(x)
+  var_y <- var(y)
+  
+  n_x <- length(x)
+  n_y <- length(y)
+  
+  # Pooled standard deviation
+  S_p <- sqrt(((n_x - 1) * var_x + (n_y - 1) * var_y) / (n_x + n_y - 2))
+  
+  # T-statistic
+  t_stat <- (mean_x - mean_y) / (S_p * sqrt(1/n_x + 1/n_y))
+  
+  # Degrees of freedom
+  df <- n_x + n_y - 2
+  
+  # Two-tailed p-value
+  p_value <- 2 * pt(-abs(t_stat), df)
+  
+  return(list(p_value = p_value))
+}
+
+manual_t_test(wine$Total_phenols[wine$Class == 1], 
+                    wine$Total_phenols[wine$Class == 2])
+manual_t_test(wine$Total_phenols[wine$Class == 1], 
+                    wine$Total_phenols[wine$Class == 3])
+manual_t_test(wine$Total_phenols[wine$Class == 2], 
+                    wine$Total_phenols[wine$Class == 3])
+```
+
+#### Problem 2 - AskAManager.org Data
+
+#### 2.a
+
+```{r 2.a}
+# import data
+survey_data <- data.frame(read.csv("AskAManager.csv", stringsAsFactors = FALSE))
+```
+
+#### 2.b
+
+```{r 2.b}
+# clean up variable names
+colnames(survey_data) <- c('Index','Time','Age','Job','Job_Title','Job_Title_Add','Salary','Compensation','Currency', 'Currency_Add','Income_Add','Country','State','City','Overall_work_experience','Field_work_experience','Education','Gender','Race')
+```
+
+#### 2.c
+
+```{r 2.c}
+# restrict the data to those being paid in USD
+survey_data_usd <- subset(survey_data, Currency == "USD")
+
+cat("Initial number of observations:", nrow(survey_data), "\n")
+cat("Number of observations after filtering to USD:", nrow(survey_data_usd), "\n")
+```
+
+#### 2.d (Assisted by GPT)
+
+```{r 2.d}
+# filter the data by ages and years of experience
+
+# Convert columns to factors
+survey_data_usd$Overall_work_experience <- factor(survey_data_usd$Overall_work_experience, 
+                                                   levels = c("5-7 years", "2 - 4 years", "8 - 10 years", 
+                                                              "21 - 30 years", "11 - 20 years", 
+                                                              "41 years or more", "31 - 40 years", "1 year or less"))
+
+survey_data_usd$Field_work_experience <- factor(survey_data_usd$Field_work_experience, 
+                                                levels = c("5-7 years", "2 - 4 years", "21 - 30 years", 
+                                                           "11 - 20 years", "8 - 10 years", 
+                                                           "1 year or less", "31 - 40 years", "41 years or more"))
+
+survey_data_usd$Age <- factor(survey_data_usd$Age, 
+                              levels = c("25-34", "45-54", "35-44", "18-24", "65 or over", 
+                                         "55-64", "under 18"))
+# Define mappings
+experience_mapping <- c("1 year or less" = 1, "2 - 4 years" = 2, "5-7 years" = 5, 
+                         "8 - 10 years" = 8, "11 - 20 years" = 11, "21 - 30 years" = 21, 
+                         "31 - 40 years" = 31, "41 years or more" = 41)
+
+age_mapping <- c("under 18" = 14, "18-24" = 24, "25-34" = 34, "35-44" = 44, 
+                  "45-54" = 54, "55-64" = 64, "65 or over" = 74)
+
+# Convert categories to numeric
+survey_data_usd$Overall_work_experience_numeric <- experience_mapping[as.character(survey_data_usd$Overall_work_experience)]
+survey_data_usd$Field_work_experience_numeric <- experience_mapping[as.character(survey_data_usd$Field_work_experience)]
+survey_data_usd$Age_numeric <- age_mapping[as.character(survey_data_usd$Age)]
+
+# Filter the dataframe based on conditions
+filtered_data <- subset(survey_data_usd, 
+                        Age_numeric >= 18 & 
+                        Field_work_experience_numeric <= Overall_work_experience_numeric &
+                        Overall_work_experience_numeric <= Age_numeric - 18)
+
+
+cat("Initial number of observations:", nrow(survey_data_usd), "\n")
+cat("Number of observations after filtering to USD:", nrow(filtered_data), "\n")
+```
+
+#### 2.e
+
+```{r 2.e}
+# Define the quantile levels
+quantile_levels <- c(0.001, 0.002, 0.005, 0.01, 0.02, 0.05, 0.50, 0.95, 0.99, 0.999, 0.9999)
+
+# Calculate and print the quantiles for the 'salary' column
+quantiles <- quantile(filtered_data$Salary, probs = quantile_levels)
+print(quantiles)
+```
+
+Based on some quantile statistics of the distribution of the salary, I decide the remove the rows with salary larger than 800,000 or smaller than 10,000 USD.
+
+```{r 2.e2}
+
+min_salary <- 10000
+max_salary <- 800000
+filtered_data2 <- subset(filtered_data, Salary >= min_salary & Salary <= max_salary)
+
+# Report my final sample size
+cat("Number of observations after filtering salaries:", nrow(filtered_data2), "\n")
+```
+
+#### Problem 3 - Palindromic Numbers
+
+#### 3.a
+
+```{r 3.a}
+#' checks if a given positive integer is a palindrome
+#'
+#' @param num A positive integer.
+#'
+#' @return A list with two elements:
+#' \item{isPalindromic}{A logical value indicating if the input number is palindromic.}
+#' \item{reversed}{The input number with its digits reversed.}
+isPalindromic <- function(num) {
+  # stop the program if the input is not an integer or is negative
+  if (!is.numeric(num) || num <= 0 || num != as.integer(num)) {
+    stop("Input must be a positive integer.")
+  }
+  
+  num_str <- as.character(num)
+  num_chars <- strsplit(num_str, NULL)[[1]]
+  rvd_chars <- rev(num_chars)
+  rvd_str <- paste(rvd_chars, collapse = "")
+  
+  return(list(isPalindromic = (num_str == rvd_str), reversed = as.integer(rvd_str)))
+}
+
+isPalindromic(728827)
+isPalindromic(39951)
+```
+
+#### 3.b
+
+```{r 3.b}
+#' finds the next palindromic number strictly greater than the input
+#'
+#' @param num A positive integer
+#'
+#' @return A vector of length 1 with the next palindromic number greater than the input
+nextPalindrome <- function(num) {
+  
+  num <- num + 1
+  
+  while (!isPalindromic(num)[[1]]){
+    num <- num + 1
+  }
+  return(num)
+}
+  
+
+nextPalindrome(7152)
+nextPalindrome(765431537)
+```
+
+#### 3.c
+
+```{r 3.c}
+nextPalindrome(391)
+nextPalindrome(9928)
+nextPalindrome(19272719)
+nextPalindrome(109)
+nextPalindrome(2)
+```
